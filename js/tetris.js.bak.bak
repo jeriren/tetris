@@ -1,0 +1,143 @@
+window.$=HTMLElement.prototype.$=function(selector){
+	return (this==window?document:this).querySelectorAll(selector);
+}
+var tetris={
+	RN:20,
+	CN:10,
+	CSIZE:26,
+	OFFSET_X:15,
+	OFFSET_Y:15,
+	pg:null,
+	currShape:null,
+	nextShape:null,
+	interval:1000,
+	timer:null,
+	wall:[],
+	state:1,
+	STATE_RUNNING:1,
+	STATE_GAMEOVER:0,
+	STATE_PAUSE:2,
+	IMG_GAMEOVER:"img/game-over.png",
+	IMG_PAUSE:"img/pause.png",
+	paintState:function(){
+		var img=new Image();
+		switch(this.state){
+			case this.STATE_GAMEOVER: img=IMG_GAMEOVER; break;
+			case this.STATE_PAUSE: img=IMG_PAUSE; 
+		}
+	},
+	init:function(){
+		this.pg=$(".playground")[0];
+		this.currShape=this.random();
+		this.nextShape=this.random();
+		this.paintShape();
+		this.timer=setInterval(function(){tetris.drop();},this.interval);
+		for(var i=0;i<=this.RN-1;this.wall[i++]=[]);
+
+	},
+	drop:function(){
+		if(this.canDrop()){
+		this.currShape.drop();
+		this.paint();
+		}else{
+			this.landIntoWall();
+			if(!this.isGameOver()){
+			this.currShape=this.nextShape;
+			this.nextShape=this.random();
+			}else{
+			clearInterval(timer);
+			timer=null;
+			this.state=STATE_GAMEOVER;
+			this.paint();
+			}
+		}
+	},
+	isGameOver:function(){
+		var cells=this.nextShape.cells;
+		for(var i=0;i<cells.length;i++){
+			if(this.wall[cells[i].row][cells[i].col]){
+				return true;
+			}
+		} return false;
+	},
+	paintWall:function(){
+		for(var i=0;i<this.wall.length;i++){
+			for(var j=0;j<this.wall[i].length;j++){
+				if(this.wall[i][j]){
+					var x=this.wall[i][j].col*this.CSIZE+this.OFFSET_X;
+					var y=this.wall[i][j].row*this.CSIZE+this.OFFSET_Y;
+					var img=new Image();
+					img.src=this.wall[i][j].img;
+					img.style.left=x+"px";
+					img.style.top=y+"px";
+					this.pg.appendChild(img);
+				}				
+			}
+		}		
+	},
+	paint:function(){
+		this.pg.innerHTML=this.pg.innerHTML.replace(/(<img(.*?)>)/g,"");
+		this.paintWall();
+		this.paintShape();
+		this.paintNext();
+		this.paintState();
+	},
+	paintNext:function(){
+		var cells=this.nextShape.cells;
+		for(var i=0;i<cells.length;i++){
+		var x=(cells[i].col+10)*this.CSIZE+this.OFFSET_X;
+		var y=(cells[i].row+1)*this.CSIZE+this.OFFSET_Y;
+		var img=new Image();
+		img.src=cells[i].img;
+		img.style.left=x+"px";
+		img.style.top=y+"px";
+		this.pg.appendChild(img);
+		}
+	},
+	canDrop:function(){
+		var cells=this.currShape.cells;
+		for(var i=0;i<cells.length;i++){
+		if(cells[i].row==(this.RN-1)){
+			return false;
+			}	
+		if(this.wall[cells[i].row+1][cells[i].col]){
+			return false;
+		}
+		}
+		return true;
+	},
+	landIntoWall:function(){
+		var cells=this.currShape.cells;
+		for(var i=0;i<cells.length;i++){
+			this.wall[cells[i].row][cells[i].col]=cells[i];
+		}
+	},
+	random:function(){
+		switch(parseInt(Math.random()*6)){
+		case 0: return new I();
+		case 1: return new J();
+		case 2: return new L();
+		case 3: return new O();
+		case 4: return new S();
+		case 5: return new T();
+		case 6: return new Z();
+
+		}
+	},
+	paintShape:function(){
+	var cells=this.currShape.cells;
+	for(var i=0;i<cells.length;i++){
+		var x=cells[i].col*this.CSIZE+this.OFFSET_X;
+		var y=cells[i].row*this.CSIZE+this.OFFSET_Y;
+		var img=new Image();
+		img.src=cells[i].img;
+		img.style.left=x+"px";
+		img.style.top=y+"px";
+		this.pg.appendChild(img);
+		}
+	},
+}
+
+window.onload=function(){
+	tetris.init();
+}

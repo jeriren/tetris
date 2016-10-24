@@ -1,0 +1,269 @@
+window.$=HTMLElement.prototype.$=function(selector){
+	return (this==window?document:this).querySelectorAll(selector);
+}
+var tetris={
+	RN:20,
+	CN:10,
+	CSIZE:26,
+	OFFSET_X:15,
+	OFFSET_Y:15,
+	pg:null,
+	currShape:null,
+	nextShape:null,
+	interval:1000,
+	timer:null,
+	wall:[],
+	state:1,
+	STATE_RUNNING:1,
+	STATE_GAMEOVER:0,
+	STATE_PAUSE:2,
+	IMG_GAMEOVER:"img/game-over.png",
+	IMG_PAUSE:"img/pause.png",
+	SCORES:[0,10,50,80,200],
+	score:0,
+	lines:0,
+
+	paintState:function(){
+		var img=new Image();
+		switch(this.state){
+			case(this.STATE_GAMEOVER): img.src=this.IMG_GAMEOVER;
+			case(this.STATE_PAUSE): img.src=this.IMG_PAUSE;
+		}
+		this.pg.appendChild(img);
+	},
+	init:function(){
+		this.pg=$(".playground")[0];
+		this.currShape=this.random();
+		this.nextShape=this.random();
+		this.paintShape();
+		this.timer=setInterval(function(){tetris.drop();},this.interval);
+		for(var i=0;i<=this.RN-1;this.wall[i++]=[]);
+		this.state=1;
+		this.score=0;
+		this.lines=0;
+		document.onkeydown=function(){
+			var e=window.event||arguments[0];
+			switch(e.keyCode){
+				case 37: tetris.moveL();break;
+				case 39: tetris.moveR();break;
+				case 40: tetris.drop();break;
+				case 38: tetris.rotateR();break;
+				case 90: tetris.rotateL();break;
+
+				case 80:tetris.pause();break;
+				case 81:tetris.gameOver();break;
+				case 67:tetris.myContinue();break;
+				case 83:tetris.init();break;
+			}
+		}
+	},
+	drop:function(){
+	  if(this.state==this.STATE_RUNNING){
+		if(this.canDrop()){
+		this.currShape.drop();
+		this.paint();
+		}else{
+			this.landIntoWall();
+			var ln=this.deleteLines();
+			this.lines+=ln;
+			this.score+=this.SCORES[ln];
+
+			if(!this.isGameOver()){
+			this.currShape=this.nextShape;
+			this.nextShape=this.random();
+			}else{
+			clearInterval(this.timer);
+			this.timer=null;
+			this.state=this.STATE_GAMEOVER;
+			this.paint();
+			}
+		}
+	  }
+	},
+	deleteLines:function(){
+		for(var row=0,lines=0;row<this.RN;row++){
+			if(this.isFull(row)){
+				this.deleteL(row);
+				lines++;
+			}
+		}
+		return lines;
+	},
+	isFull:function(row){
+		for(var j=0;j<this.CN;j++){
+			if(!this.wall[row][j]){return false;}
+		}
+		return true;	
+	},
+	deleteL:function(row){
+		this.wall.splice(row,1);
+		this.wall.unshift([]);
+		for(var i=0;i<=row;i++){
+			for(var j=0;j<this.CN;j++){
+				if(this.wall[i][j]){this.wall[i][j].row+=1;}
+			}
+		}
+	},
+
+	pause:function(){
+		if(this.state==this.STATE_RUNNING){
+		this.state=this.STATE_PAUSE;
+		clearInterval(this.timer);
+		}
+	},
+	gameOver:function(){
+		clearIntervar(this.timer);
+		this.timer=null;
+		this.paint();
+	},
+	myContinue:function(){
+		if(this.state=this.STATE_PAUSE){
+			this.state=this.STATE_RUNNING;
+			this.timer=setInterval(function(){tetris.drop();},this.interval);
+		}
+	},
+
+	moveR:function(){
+	 if(this.state==this.STATE_RUNNING){
+		this.currShape.moveR();
+		if(this.isOutOfBorder()||this.isHit()){
+			this.currShape.moveL();
+		}
+	  }
+	},
+	moveL:function(){
+	 if(this.state==this.STATE_RUNNING){
+		this.currShape.moveL();
+		if(this.isOutOfBorder()||this.isHit()){
+			this.currShape.moveR();
+		}
+	  }
+	},
+	rotateR:function(){
+	  if(this.state==this.STATE_RUNNING){
+		this.currShape.rotateR();
+		if(this.isOutOfBorder()||this.isHit()){
+			this.currShape.moveL();
+		}
+	  }
+	},
+	rotateL:function(){
+	 if(this.state==this.STATE_RUNNING){
+		this.currShape.rotateR();
+		if(this.isOutOfBorder()||this.isHit()){
+			this.currShape.moveR();
+		}
+	  }
+	},
+	isOutOfBorder:function(){
+		var cells=this.currShape.cells;
+		for(var i=0;i<cells.length;i++){
+			if(cells[i].col<0||cells[i].col>=this.CN){
+				return true;
+			}
+		}
+		return false;
+	},
+	isHit:function(){
+		var cells=this.currShape.cells;
+		for(var i=0;i<cells.length;i++){
+			if(this.wall[cells[i].row][cells[i].col]){
+				return true;
+			}
+		}
+		return false;
+	},
+	isGameOver:function(){
+		var cells=this.nextShape.cells;
+		for(var i=0;i<cells.length;i++){
+			if(this.wall[cells[i].row][cells[i].col]){
+				return true;
+			}
+		} return false;
+	},
+	paintWall:function(){
+		for(var i=0;i<this.wall.length;i++){
+			for(var j=0;j<this.wall[i].length;j++){
+				if(this.wall[i][j]){
+					var x=this.wall[i][j].col*this.CSIZE+this.OFFSET_X;
+					var y=this.wall[i][j].row*this.CSIZE+this.OFFSET_Y;
+					var img=new Image();
+					img.src=this.wall[i][j].img;
+					img.style.left=x+"px";
+					img.style.top=y+"px";
+					this.pg.appendChild(img);
+				}				
+			}
+		}		
+	},
+	paintScore:function(){
+		$("span")[0].innerHTML=this.score;
+		$("span")[1].innerHTML=this.lines;
+	},
+	paint:function(){
+		this.pg.innerHTML=this.pg.innerHTML.replace(/(<img(.*?)>)/g,"");
+		this.paintWall();
+		this.paintShape();
+		this.paintNext();
+		this.paintScore();
+		this.paintState();
+	},
+	paintNext:function(){
+		var cells=this.nextShape.cells;
+		for(var i=0;i<cells.length;i++){
+		var x=(cells[i].col+10)*this.CSIZE+this.OFFSET_X;
+		var y=(cells[i].row+1)*this.CSIZE+this.OFFSET_Y;
+		var img=new Image();
+		img.src=cells[i].img;
+		img.style.left=x+"px";
+		img.style.top=y+"px";
+		this.pg.appendChild(img);
+		}
+	},
+	canDrop:function(){
+		var cells=this.currShape.cells;
+		for(var i=0;i<cells.length;i++){
+		if(cells[i].row==(this.RN-1)){
+			return false;
+			}	
+		if(this.wall[cells[i].row+1][cells[i].col]){
+			return false;
+		}
+		}
+		return true;
+	},
+	landIntoWall:function(){
+		var cells=this.currShape.cells;
+		for(var i=0;i<cells.length;i++){
+			this.wall[cells[i].row][cells[i].col]=cells[i];
+		}
+	},
+	random:function(){
+		switch(parseInt(Math.random()*6)){
+		case 0: return new I();
+		case 1: return new J();
+		case 2: return new L();
+		case 3: return new O();
+		case 4: return new S();
+		case 5: return new T();
+		case 6: return new Z();
+
+		}
+	},
+	paintShape:function(){
+	var cells=this.currShape.cells;
+	for(var i=0;i<cells.length;i++){
+		var x=cells[i].col*this.CSIZE+this.OFFSET_X;
+		var y=cells[i].row*this.CSIZE+this.OFFSET_Y;
+		var img=new Image();
+		img.src=cells[i].img;
+		img.style.left=x+"px";
+		img.style.top=y+"px";
+		this.pg.appendChild(img);
+		}
+	},
+}
+
+window.onload=function(){
+	tetris.init();
+}
